@@ -34,8 +34,9 @@
    structure.  */
 
 #include "as.h"
-#include "safe-ctype.h"
 #include "obstack.h"
+#include <string.h>
+#include <ctype.h>
 
 extern void free( void * );
 

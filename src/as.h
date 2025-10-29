@@ -92,7 +92,7 @@ extern void *alloca ();
 #include <sys/types.h>
 #endif
 
-#include "getopt.h"
+#include <getopt.h>
 /* The first getopt value for machine-independent long options.
    150 isn't special; it's just an arbitrary non-ASCII char value.  */
 #define OPTION_STD_BASE 150
@@ -132,7 +132,7 @@ extern void *alloca ();
 #ifdef BFD_ASSEMBLER
 #include "bfd.h"
 #endif
-#include "libiberty.h"
+#include "compat.h"
 
 /* Define the standard progress macros.  */
 #include "progress.h"

@@ -35,7 +35,7 @@
 #else
 #include <strings.h>
 #endif
-#include "libiberty.h"
+#include "compat.h"
 #include "sb.h"
 
 /* These routines are about manipulating strings.

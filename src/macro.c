@@ -58,8 +58,7 @@ extern void *alloca ();
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
 #endif
-#include "libiberty.h"
-#include "safe-ctype.h"
+#include "compat.h"
 #include "sb.h"
 #include "hash.h"
 #include "macro.h"

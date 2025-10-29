@@ -57,7 +57,7 @@ suitable for gas to consume.
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "getopt.h"
+#include <getopt.h>
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
@@ -68,12 +68,11 @@ extern char *malloc ();
 #endif
 
 #include "ansidecl.h"
-#include "libiberty.h"
-#include "safe-ctype.h"
+#include "compat.h"
 #include "sb.h"
 #include "macro.h"
 #include "asintl.h"
-#include "xregex.h"
+#include <regex.h>
 
 char *program_version = PACKAGE_VERSION;
 

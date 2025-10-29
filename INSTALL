@@ -7,7 +7,6 @@ Build requirements
 ------------------
 - C compiler (GCC/Clang)
 - CMake 3.15+ (recommended)
-- External libiberty (from binutils) with headers and library available
 
 Quick build (CMake)
 -------------------
@@ -28,21 +27,9 @@ To install under /usr use:
 
 cmake --install build-cmake --prefix /usr
 
-External libiberty (required)
------------------------------
-MASP now requires a system libiberty. If CMake cannot find it automatically,
-provide hints:
-
-Package names (examples):
-- Debian/Ubuntu: sudo apt-get install binutils-dev
-- Fedora/RHEL:   sudo dnf install binutils-devel
-- macOS (Homebrew): brew install binutils
-
-If CMake cannot find libiberty automatically, provide hints:
-
-cmake -S . -B build-cmake \
-  -DLIBIBERTY_LIBRARY=/path/to/libiberty.a \
-  -DLIBIBERTY_INCLUDE_DIR=/path/to/include
+External dependencies
+---------------------
+None. MASP no longer depends on libiberty.
 
 Uninstall
 ---------
