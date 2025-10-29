@@ -113,7 +113,7 @@ extern void *alloca ();
 #include <assert.h>
 #else /* BROKEN_ASSERT */
 #ifndef NDEBUG
-#define assert(p) ((p) ? 0 : (as_assert (__FILE__, __LINE__, __PRETTY_FUNCTION__), 0))
+#define assert(p) ((p) ? 0 : (as_assert (__FILE__, __LINE__, __func__), 0))
 #else
 #define assert(p) ((p), 0)
 #endif
@@ -121,9 +121,9 @@ extern void *alloca ();
 
 #else
 
-#define assert(P) ((P) ? 0 : (as_assert (__FILE__, __LINE__, __PRETTY_FUNCTION__), 0))
+#define assert(P) ((P) ? 0 : (as_assert (__FILE__, __LINE__, __func__), 0))
 #undef abort
-#define abort()		as_abort (__FILE__, __LINE__, __PRETTY_FUNCTION__)
+#define abort()		as_abort (__FILE__, __LINE__, __func__)
 
 #endif
 
@@ -534,7 +534,7 @@ PRINTF_WHERE_LIKE (as_bad_where);
 PRINTF_WHERE_LIKE (as_warn_where);
 
 void as_assert(const char *, int, const char *);
-void as_abort(const char *, int, const char *) __attribute__ ((__noreturn__));
+__attribute__ ((noreturn)) void as_abort(const char *file, int line, const char *fn);
 
 void fprint_value(FILE *file, addressT value);
 void sprint_value(char *buf, addressT value);

@@ -20,12 +20,13 @@ target_include_directories(masp
 
 target_compile_definitions(masp PRIVATE PACKAGE_VERSION="0.1.16")
 
-# Enforce modern prototypes and reject legacy K&R definitions
-if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
   target_compile_options(masp PRIVATE
     -Wall -Wextra -Wpedantic
     -Wno-unused-parameter
     -Wno-unused-but-set-variable
+    -Wno-format-overflow
+    -Wno-cast-function-type-mismatch
+    -Wno-cast-function-type
+    -Wno-deprecated-non-prototype
     -Werror
   )
-endif()

@@ -1957,9 +1957,7 @@ do_print (int idx, sb *in)
 /* .head  */
 
 static void
-do_heading (idx, in)
-     int idx;
-     sb *in;
+do_heading (int idx, sb *in)
 {
   sb head;
   sb_new (&head);
@@ -4307,10 +4305,10 @@ main (int argc, char *argv[])
   ifstack[0].on = 1;
   ifi = 0;
 
-#if defined (HAVE_SETLOCALE) && defined (HAVE_LC_MESSAGES)
+#if defined (HAVE_SETLOCALE) && defined (HAVE_LC_MESSAGES) && defined (LC_MESSAGES)
   setlocale (LC_MESSAGES, "");
 #endif
-#if defined (HAVE_SETLOCALE)
+#if defined (HAVE_SETLOCALE) && defined (LC_CTYPE)
   setlocale (LC_CTYPE, "");
 #endif
   bindtextdomain (PACKAGE, LOCALEDIR);
@@ -4377,6 +4375,7 @@ main (int argc, char *argv[])
 	  break;
 	case 'h':
 	  show_help ();
+	  break;
 	  /* NOTREACHED  */
 	case 'v':
 	  /* This output is intended to follow the GNU standards document.  */
@@ -4446,10 +4445,9 @@ the GNU General Public License.  This program has absolutely no warranty.\n"));
 /* This function is used because an abort in some of the other files
    may be compiled into as_abort because they include as.h.  */
 
+__attribute__ ((noreturn))
 void
-as_abort (file, line, fn)
-     const char *file, *fn;
-     int line;
+as_abort (const char *file, int line, const char *fn)
 {
   fprintf (stderr, _("Internal error, aborting at %s line %d"), file, line);
   if (fn)
