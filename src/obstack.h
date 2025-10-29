@@ -115,17 +115,8 @@
 extern "C" {
 #endif
 
-/* We use subtraction of (char *) 0 instead of casting to int
-   because on word-addressable machines a simple cast to int
-   may ignore the byte-within-word field of the pointer.  */
-
-#ifndef __PTR_TO_INT
-# define __PTR_TO_INT(P) ((P) - (char *) 0)
-#endif
-
-#ifndef __INT_TO_PTR
-# define __INT_TO_PTR(P) ((P) + (char *) 0)
-#endif
+/* Use uintptr_t for pointer arithmetic in a well-defined way.  */
+#include <stdint.h>
 
 /* We need the type of the resulting object.  If __PTRDIFF_TYPE__ is
    defined, as with GNU C, use that; that way we don't pollute the
@@ -215,7 +206,7 @@ extern int _obstack_begin ();
 extern int _obstack_begin_1 ();
 extern int _obstack_memory_used ();
 #endif
-
+
 #if defined __STDC__ && __STDC__
 
 /* Do the function-declarations after the structs
@@ -475,8 +466,8 @@ __extension__								\
    if (__o1->next_free == value)					\
      __o1->maybe_empty_object = 1;					\
    __o1->next_free							\
-     = __INT_TO_PTR ((__PTR_TO_INT (__o1->next_free)+__o1->alignment_mask)\
-		     & ~ (__o1->alignment_mask));			\
+     = (char *)(((uintptr_t)__o1->next_free + (uintptr_t)__o1->alignment_mask)\
+               & ~(uintptr_t)__o1->alignment_mask);			\
    if (__o1->next_free - (char *)__o1->chunk				\
        > __o1->chunk_limit - (char *)__o1->chunk)			\
      __o1->next_free = __o1->chunk_limit;				\
@@ -561,19 +552,19 @@ __extension__								\
 # define obstack_copy0(h,where,length)					\
  (obstack_grow0 ((h), (where), (length)), obstack_finish ((h)))
 
-# define obstack_finish(h)  						\
-( ((h)->next_free == (h)->object_base					\
-   ? (((h)->maybe_empty_object = 1), 0)					\
-   : 0),								\
-  (h)->temp = __PTR_TO_INT ((h)->object_base),				\
-  (h)->next_free							\
-    = __INT_TO_PTR ((__PTR_TO_INT ((h)->next_free)+(h)->alignment_mask)	\
-		    & ~ ((h)->alignment_mask)),				\
-  (((h)->next_free - (char *) (h)->chunk				\
-    > (h)->chunk_limit - (char *) (h)->chunk)				\
-   ? ((h)->next_free = (h)->chunk_limit) : 0),				\
-  (h)->object_base = (h)->next_free,					\
-  __INT_TO_PTR ((h)->temp))
+# define obstack_finish(h)  \
+( ((h)->next_free == (h)->object_base \
+   ? (((h)->maybe_empty_object = 1), 0) \
+   : 0), \
+  (h)->temp = (PTR_INT_TYPE)(uintptr_t)((h)->object_base), \
+  (h)->next_free \
+    = (char *)(((uintptr_t)(h)->next_free + (uintptr_t)(h)->alignment_mask) \
+            & ~(uintptr_t)(h)->alignment_mask), \
+  (((h)->next_free - (char *) (h)->chunk \
+    > (h)->chunk_limit - (char *) (h)->chunk) \
+   ? ((h)->next_free = (h)->chunk_limit) : 0), \
+  (h)->object_base = (h)->next_free, \
+  (char *)(uintptr_t)((h)->temp))
 
 # if defined __STDC__ && __STDC__
 #  define obstack_free(h,obj)						\

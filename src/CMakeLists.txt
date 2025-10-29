@@ -14,9 +14,18 @@ add_executable(masp ${MASP_SOURCES})
 
 target_include_directories(masp
   PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_compile_definitions(masp PRIVATE PACKAGE_VERSION="0.1.16")
+
+# Enforce modern prototypes and reject legacy K&R definitions
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+  target_compile_options(masp PRIVATE
+    -Wall -Wextra -Wpedantic
+    -Wno-unused-parameter
+    -Wno-unused-but-set-variable
+    -Werror
+  )
+endif()
