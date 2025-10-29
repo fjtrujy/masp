@@ -5281,15 +5281,6 @@ fi
 
 done
 
-LIBOBJS="$LIBOBJS fnmatch.$ac_objext"
-          ac_config_links="$ac_config_links $ac_config_libobj_dir/fnmatch.h:$ac_config_libobj_dir/fnmatch_.h"
-
-
-cat >>confdefs.h <<\_ACEOF
-#define fnmatch rpl_fnmatch
-_ACEOF
-
-
 fi
 
 
