@@ -13,17 +13,11 @@ add_executable(masp ${MASP_SOURCES})
 
 target_include_directories(masp
   PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_compile_definitions(masp PRIVATE PACKAGE_VERSION="0.1.16")
 
-if(TARGET libiberty)
-  target_link_libraries(masp PRIVATE libiberty)
-elseif(TARGET Libiberty::Libiberty)
-  target_link_libraries(masp PRIVATE Libiberty::Libiberty)
-else()
-  message(FATAL_ERROR "No libiberty target available. Enable BUILD_INTERNAL_LIBIBERTY or provide external Libiberty::Libiberty")
-endif()
+# Link external libiberty (required by top-level)
+target_link_libraries(masp PRIVATE Libiberty::Libiberty)

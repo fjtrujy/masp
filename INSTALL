@@ -7,8 +7,7 @@ Build requirements
 ------------------
 - C compiler (GCC/Clang)
 - CMake 3.15+ (recommended)
-- Optional: external libiberty (from binutils). If not found, a bundled copy
-  is built automatically.
+- External libiberty (from binutils) with headers and library available
 
 Quick build (CMake)
 -------------------
@@ -29,12 +28,10 @@ To install under /usr use:
 
 cmake --install build-cmake --prefix /usr
 
-External libiberty (optional)
+External libiberty (required)
 -----------------------------
-MASP prefers a system libiberty if available; otherwise it builds the bundled
-copy. To require a system libiberty set:
-
-cmake -S . -B build-cmake -DBUILD_INTERNAL_LIBIBERTY=OFF
+MASP now requires a system libiberty. If CMake cannot find it automatically,
+provide hints:
 
 Package names (examples):
 - Debian/Ubuntu: sudo apt-get install binutils-dev
@@ -44,7 +41,6 @@ Package names (examples):
 If CMake cannot find libiberty automatically, provide hints:
 
 cmake -S . -B build-cmake \
-  -DBUILD_INTERNAL_LIBIBERTY=OFF \
   -DLIBIBERTY_LIBRARY=/path/to/libiberty.a \
   -DLIBIBERTY_INCLUDE_DIR=/path/to/include
 
