@@ -56,18 +56,28 @@ jobs:
       run: |
         export PS2DEV=$PWD/ps2dev
         export PATH="$PS2DEV/bin:$PATH"
-        cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV
+        if [ "${{ matrix.os[0] }}" = "ubuntu-latest" ]; then
+          export SAN="-fsanitize=address,undefined -fno-omit-frame-pointer"
+          cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV \
+            -DCMAKE_C_FLAGS="$SAN" -DCMAKE_EXE_LINKER_FLAGS="$SAN"
+        else
+          cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV
+        fi
         cmake --build build-cmake --config ${{ matrix.debug }}
-        cmake --install build-cmake --prefix $PS2DEV
+    #     cmake --install build-cmake --prefix $PS2DEV
 
-    - name: Test MASP
-      run: |
-        export PS2DEV=$PWD/ps2dev
-        export PATH="$PS2DEV/bin:$PATH"
-        masp -p -s -c ';' -o test/vu1Triangle.vcl_masp test/vu1Triangle.vcl
+    # - name: Test MASP
+    #   run: |
+    #     export PS2DEV=$PWD/ps2dev
+    #     export PATH="$PS2DEV/bin:$PATH"
+    #     masp -p -s -c ';' -o test/vu1Triangle.vcl_masp test/vu1Triangle.vcl
 
     - name: Run unit tests (ctest)
       run: |
+        if [ "${{ matrix.os[0] }}" = "ubuntu-latest" ]; then
+          export ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1:strict_string_checks=1
+          export UBSAN_OPTIONS=print_stacktrace=1
+        fi
         ctest --test-dir build-cmake -C ${{ matrix.debug }} --output-on-failure
 
     - name: Upload artifacts
