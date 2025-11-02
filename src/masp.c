@@ -2302,12 +2302,25 @@ process_assigns (int idx, sb *in, sb *buf)
 	      idx++;
 	    }
 	  ptr = hash_lookup (&keyword_hash_table, &acc);
-	  //	  printf ( "Hash stuff: %d", ptr->value.i );
-
-	  switch( ptr->value.i )
+	  if (!ptr)
 	    {
-	    case K_EXPR:
-	      idx = do_expr( idx, in, buf );
+	      /* Unknown backslash keyword: leave as-is */
+	      sb_add_char (buf, '\\');
+	      sb_add_sb (buf, &acc);
+	    }
+	  else
+	    {
+	      switch (ptr->value.i)
+		{
+		case K_EXPR:
+		  idx = do_expr (idx, in, buf);
+		  break;
+		default:
+		  /* Unhandled known keyword: copy back */
+		  sb_add_char (buf, '\\');
+		  sb_add_sb (buf, &acc);
+		  break;
+		}
 	    }
 	  sb_kill (&acc);
 	}
