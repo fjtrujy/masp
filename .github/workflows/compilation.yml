@@ -36,17 +36,13 @@ jobs:
 
     - name: Compile MASP
       run: |
-        cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$HOME/.local
+        cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }}
         cmake --build build-cmake --config ${{ matrix.debug }}
-        cmake --install build-cmake -v
-
-    - name: Add install dir to PATH
-      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Test MASP
       run: |
-        which masp
-        masp --version
+        cp build-cmake/src/masp test/masp
+        test/masp -p -s -c ';' -o test/vu1Triangle.vcl_masp test/vu1Triangle.vcl
 
     - name: Upload artifacts
       if: ${{ success() }}
