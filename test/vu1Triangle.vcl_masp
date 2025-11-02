@@ -1,0 +1,139 @@
+;   1                    /*
+	/*
+;   2                     * vu1Triangle.vcl
+	* vu1Triangle.vcl
+;   3                     *
+	*
+;   4                     * Copyright (C) 2004 Jesper Svennevid, Daniel Collin
+	* Copyright (C) 2004 Jesper Svennevid, Daniel Collin
+;   5                     *
+	*
+;   6                     * Licensed under the AFL v2.0. See the file LICENSE included with this
+	* Licensed under the AFL v2.0. See the file LICENSE included with this
+;   7                     * distribution for licensing terms.
+	* distribution for licensing terms.
+;   8                     *
+	*
+;   9                     */
+	*/
+;  10                    
+
+;  11                    destOffset      .assign         20
+;  12                    kickOffset      .assign         20
+;  13                    
+
+;  14                    matrixOffset    .assign         0
+;  15                    gifTagOffset    .assign         4
+;  16                    colorOffset     .assign         5
+;  17                    vertexOffset    .assign         6
+;  18                    
+
+;  19                    vertexCount     .assign         3
+;  20                    
+
+;  21                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;  22                    
+
+;  23                    .macro   matrixMultiplyVertex vertexResult,matrix,vertexIn
+;  24                      mul            acc,           \matrix[0], \vertexIn[x]
+;  25                      madd           acc,           \matrix[1], \vertexIn[y]
+;  26                      madd           acc,           \matrix[2], \vertexIn[z]
+;  27                      madd           \vertexResult, \matrix[3], \vertexIn[w]
+;  28                    .endm
+;  29                    
+
+;  30                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;  31                    
+
+;  32                                    .syntax new
+	.syntax new
+;  33                                    .name vu1Triangle             
+	.name vu1Triangle             
+;  34                                    .vu
+	.vu
+;  35                                    .init_vf_all
+	.init_vf_all
+;  36                                    .init_vi_all
+	.init_vi_all
+;  37                                    --enter
+	--enter
+;  38                                    --endenter
+	--endenter
+;  39                    
+
+;  40                                    iaddiu          vertexData, vi00, vertexOffset
+	iaddiu          vertexData, vi00, 6
+;  41                                    iaddiu          destAddress, vi00, destOffset
+	iaddiu          destAddress, vi00, 20
+;  42                                    iaddiu          kickAddress, vi00, kickOffset
+	iaddiu          kickAddress, vi00, 20
+;  43                    
+
+;  44                    								lq              worldToScreen[0], matrixOffset+0(vi00)
+	lq              worldToScreen[0], 0+0(vi00)
+;  45                                    lq              worldToScreen[1], matrixOffset+1(vi00)
+	lq              worldToScreen[1], 0+1(vi00)
+;  46                                    lq              worldToScreen[2], matrixOffset+2(vi00)
+	lq              worldToScreen[2], 0+2(vi00)
+;  47                                    lq              worldToScreen[3], matrixOffset+3(vi00)
+	lq              worldToScreen[3], 0+3(vi00)
+;  48                    
+
+;  49                                    lq              gifTag, gifTagOffset(vi00)
+	lq              gifTag, 4(vi00)
+;  50                                    sqi             gifTag, (destAddress++)
+	sqi             gifTag, (destAddress++)
+;  51                                    
+;  52                                    lq              color, colorOffset(vi00)
+	lq              color, 5(vi00)
+;  53                                    sqi             color, (destAddress++)
+	sqi             color, (destAddress++)
+;  54                    
+
+;  55                                    iaddiu          vertexCounter, vi00, vertexCount
+	iaddiu          vertexCounter, vi00, 3
+;  56                    vertexLoop:
+vertexLoop:
+;  57                                    lqi             vertex, (vertexData++)
+	lqi             vertex, (vertexData++)
+;  58                    
+
+;  59                                    matrixMultiplyVertex vertexOut, worldToScreen, vertex
+;  60.1                    mul            acc,           worldToScreen[0], vertex[x]
+	mul            acc,           worldToScreen[0], vertex[x]
+;  60.2                    madd           acc,           worldToScreen[1], vertex[y]
+	madd           acc,           worldToScreen[1], vertex[y]
+;  60.3                    madd           acc,           worldToScreen[2], vertex[z]
+	madd           acc,           worldToScreen[2], vertex[z]
+;  60.4                    madd           vertexOut, worldToScreen[3], vertex[w]
+	madd           vertexOut, worldToScreen[3], vertex[w]
+;  60                    
+
+;  61                                    div             q, vf00[w], vertexOut[w]
+	div             q, vf00[w], vertexOut[w]
+;  62                                    mul.xyz         vertexOut, vertexOut, q
+	mul.xyz         vertexOut, vertexOut, q
+;  63                                    ftoi4           vertexOut, vertexOut
+	ftoi4           vertexOut, vertexOut
+;  64                    
+
+;  65                                    sqi             vertexOut, (destAddress++)
+	sqi             vertexOut, (destAddress++)
+;  66                    
+
+;  67                                    iaddi           vertexCounter, vertexCounter, -1
+	iaddi           vertexCounter, vertexCounter, -1
+;  68                                    ibne            vertexCounter, vi00, vertexLoop
+	ibne            vertexCounter, vi00, vertexLoop
+;  69                                    
+;  70                                    xgkick          kickAddress
+	xgkick          kickAddress
+;  71                    
+
+;  72                    								--exit
+	--exit
+;  73                    								--endexit
+	--endexit
+;  74                    .END

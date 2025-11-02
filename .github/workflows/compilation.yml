@@ -66,6 +66,10 @@ jobs:
         export PATH="$PS2DEV/bin:$PATH"
         masp -p -s -c ';' -o test/vu1Triangle.vcl_masp test/vu1Triangle.vcl
 
+    - name: Run unit tests (ctest)
+      run: |
+        ctest --test-dir build-cmake -C ${{ matrix.debug }} --output-on-failure
+
     - name: Upload artifacts
       if: ${{ success() }}
       uses: actions/upload-artifact@v4

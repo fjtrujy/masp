@@ -61,3 +61,14 @@ install(TARGETS masp
 if(MINGW)
   target_link_libraries(masp PRIVATE gnurx)
 endif()
+
+# Tests
+if(BUILD_TESTING)
+  add_test(NAME masp_vu1Triangle
+    COMMAND ${CMAKE_COMMAND}
+      -Dmasp_exe=$<TARGET_FILE:masp>
+      -Dsrc=${CMAKE_SOURCE_DIR}/test/vu1Triangle.vcl
+      -Dexpected=${CMAKE_SOURCE_DIR}/test/vu1Triangle.vcl_masp
+      -Dout=${CMAKE_BINARY_DIR}/test_outputs/vu1Triangle.vcl_masp
+      -P ${CMAKE_SOURCE_DIR}/cmake/RunMaspAndCompare.cmake)
+endif()
