@@ -19,6 +19,7 @@ jobs:
           [windows-latest, x86_64, msys2]
         ]
         debug: [RelWithDebInfo]
+        sanitizer: [none, asan]
       fail-fast: false
     defaults:
      run:
@@ -56,7 +57,7 @@ jobs:
       run: |
         export PS2DEV=$PWD/ps2dev
         export PATH="$PS2DEV/bin:$PATH"
-        if [ "${{ matrix.os[0] }}" = "ubuntu-latest" ]; then
+        if [ "${{ matrix.sanitizer }}" = "asan" ]; then
           export SAN="-fsanitize=address,undefined -fno-omit-frame-pointer"
           cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV \
             -DCMAKE_C_FLAGS="$SAN" -DCMAKE_EXE_LINKER_FLAGS="$SAN"
@@ -64,19 +65,24 @@ jobs:
           cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV
         fi
         cmake --build build-cmake --config ${{ matrix.debug }}
-    #     cmake --install build-cmake --prefix $PS2DEV
-
-    # - name: Test MASP
-    #   run: |
-    #     export PS2DEV=$PWD/ps2dev
-    #     export PATH="$PS2DEV/bin:$PATH"
-    #     masp -p -s -c ';' -o test/vu1Triangle.vcl_masp test/vu1Triangle.vcl
 
     - name: Run unit tests (ctest)
       run: |
-        if [ "${{ matrix.os[0] }}" = "ubuntu-latest" ]; then
-          export ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1:strict_string_checks=1
-          export UBSAN_OPTIONS=print_stacktrace=1
+        if [ "${{ matrix.sanitizer }}" = "asan" ]; then
+          case "${{ matrix.os[0] }}" in
+            ubuntu-latest)
+              export ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1:strict_string_checks=1
+              export UBSAN_OPTIONS=print_stacktrace=1
+              ;;
+            macos-*)
+              export ASAN_OPTIONS=check_initialization_order=1:strict_string_checks=1
+              export UBSAN_OPTIONS=print_stacktrace=1
+              ;;
+            windows-latest)
+              # LeakSanitizer not supported on Windows; disable leaks to avoid false failures
+              export ASAN_OPTIONS=detect_leaks=0
+              ;;
+          esac
         fi
         ctest --test-dir build-cmake -C ${{ matrix.debug }} --output-on-failure
 
@@ -84,5 +90,5 @@ jobs:
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
       with:
-        name: masp-${{ matrix.debug }}-${{ matrix.os[0] }}-${{ matrix.os[1] }}
+        name: masp-${{ matrix.debug }}-${{ matrix.os[0] }}-${{ matrix.os[1] }}-${{ matrix.sanitizer }}
         path: build-cmake/src/masp
