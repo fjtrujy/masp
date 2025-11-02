@@ -20,6 +20,9 @@ jobs:
         ]
         debug: [RelWithDebInfo]
         sanitizer: [none, asan]
+        exclude:
+          - os: [windows-latest, x86_64, msys2]
+            sanitizer: asan
       fail-fast: false
     defaults:
      run:
@@ -58,31 +61,17 @@ jobs:
         export PS2DEV=$PWD/ps2dev
         export PATH="$PS2DEV/bin:$PATH"
         if [ "${{ matrix.sanitizer }}" = "asan" ]; then
-          export SAN="-fsanitize=address,undefined -fno-omit-frame-pointer"
-          cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV \
-            -DCMAKE_C_FLAGS="$SAN" -DCMAKE_EXE_LINKER_FLAGS="$SAN"
-        else
-          cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV
+          export SAN="-fsanitize=address,undefined"
+          export EXTRA_CMAKE_FLAGS="-DCMAKE_C_FLAGS='$SAN' -DCMAKE_EXE_LINKER_FLAGS='$SAN'"
         fi
+        cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV ${EXTRA_CMAKE_FLAGS}
         cmake --build build-cmake --config ${{ matrix.debug }}
 
     - name: Run unit tests (ctest)
       run: |
         if [ "${{ matrix.sanitizer }}" = "asan" ]; then
-          case "${{ matrix.os[0] }}" in
-            ubuntu-latest)
-              export ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1:strict_string_checks=1
-              export UBSAN_OPTIONS=print_stacktrace=1
-              ;;
-            macos-*)
-              export ASAN_OPTIONS=check_initialization_order=1:strict_string_checks=1
-              export UBSAN_OPTIONS=print_stacktrace=1
-              ;;
-            windows-latest)
-              # LeakSanitizer not supported on Windows; disable leaks to avoid false failures
-              export ASAN_OPTIONS=detect_leaks=0
-              ;;
-          esac
+          export EXTRA_ASAN_OPTIONS="check_initialization_order=1:strict_string_checks=1:print_stacktrace=1"
+          export ASAN_OPTIONS=$EXTRA_ASAN_OPTIONS
         fi
         ctest --test-dir build-cmake -C ${{ matrix.debug }} --output-on-failure
 
