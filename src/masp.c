@@ -475,15 +475,14 @@ hash_new_table (int size, hash_table *ptr)
 static int
 hash(const sb *key)
 {
-  int k = 0x1234;
+  unsigned int k = 0x1234u;
   int i;
-  char *p = key->ptr;
+  const unsigned char *p = (const unsigned char *)key->ptr;
   for (i = 0; i < key->len; i++)
     {
-      k ^= (k << 2) ^ *p;
-      p++;
+      k ^= (k << 2) ^ p[i];
     }
-  return k & 0xf0fff;
+  return (int)(k & 0xf0fffu);
 }
 
 /* Look up key in hash_table tab.  If present, then return it,

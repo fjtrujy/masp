@@ -1,5 +1,7 @@
 #include "compat.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "obstack.h"
 
 static const char *g_progname = NULL;
@@ -95,7 +97,12 @@ void _obstack_newchunk(struct obstack *h, int length)
   if (h->use_extra_arg && h->chunkfun)
     newc = (*h->chunkfun)(h->extra_arg, needed + sizeof(struct _obstack_chunk));
   else if (h->chunkfun)
-    newc = (*h->chunkfun)(NULL, needed + sizeof(struct _obstack_chunk));
+    {
+      /* When extra arg is not in use, the allocator has the signature void*(long). */
+      struct _obstack_chunk *(*alloc_one_arg)(long)
+        = (struct _obstack_chunk *(*)(long))(void *)h->chunkfun;
+      newc = alloc_one_arg(needed + sizeof(struct _obstack_chunk));
+    }
   else
     newc = alloc_chunk(needed);
   newc->prev = h->chunk;
