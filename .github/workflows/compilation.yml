@@ -49,18 +49,21 @@ jobs:
         install: |
           base-devel git
           mingw-w64-i686-gcc mingw-w64-i686-make mingw-w64-i686-cmake
+          mingw-w64-i686-libgnurx
         update: true
 
     - name: Compile MASP
       run: |
-        cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }}
+        export PS2DEV=$PWD/ps2dev
+        export PATH="$PS2DEV/bin:$PATH"
+        cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV
         cmake --build build-cmake --config ${{ matrix.debug }}
-        cmake --install build-cmake
+        cmake --install build-cmake --prefix $PS2DEV
 
     - name: Test MASP
       run: |
-        # cp build-cmake/src/masp test/masp
-        # test/masp -p -s -c ';' -o test/vu1Triangle.vcl_masp test/vu1Triangle.vcl
+        export PS2DEV=$PWD/ps2dev
+        export PATH="$PS2DEV/bin:$PATH"
         masp -p -s -c ';' -o test/vu1Triangle.vcl_masp test/vu1Triangle.vcl
 
     - name: Upload artifacts
