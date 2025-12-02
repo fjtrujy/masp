@@ -451,6 +451,27 @@ quit (void)
 		   1 << i, string_count[i]);
 	}
     }
+
+  /* Flush and close output file to ensure all data is written.
+     This fixes race conditions when multiple masp processes run in parallel. */
+  if (outfile)
+    {
+      if (fflush (outfile) != 0)
+	{
+	  fprintf (stderr, "Error flushing output file\n");
+	  exitcode = 1;
+	}
+      if (outfile != stdout)
+	{
+	  if (fclose (outfile) != 0)
+	    {
+	      fprintf (stderr, "Error closing output file\n");
+	      exitcode = 1;
+	    }
+	  outfile = NULL;
+	}
+    }
+
   exit (exitcode);
 }
 
