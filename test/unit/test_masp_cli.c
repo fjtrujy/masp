@@ -244,9 +244,7 @@ static int run_vu1Triangle(void) {
       } else if (WIFSIGNALED(status)) {
         int sig = WTERMSIG(status);
         fprintf(stderr, "masp subprocess terminated by signal %d\n", sig);
-        const char *argv0[] = { "masp", "-p", "-s", "-c", ";", "-o", out_path, "--", src_path, NULL };
-        int argc = 9;
-        rc = masp_program_main(argc, (char**)argv0);
+        return 1;
       } else {
         fprintf(stderr, "masp subprocess terminated abnormally\n");
         return 1;

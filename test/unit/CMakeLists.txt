@@ -18,7 +18,11 @@ target_compile_definitions(test_masp_cli PRIVATE
   LOCALEDIR=""
 )
 
-add_test(NAME masp_cli_unit COMMAND test_masp_cli)
+# Only run CLI unit test when ASAN is enabled
+# Without ASAN, masp has memory corruption bugs that cause crashes
+if(ENABLE_ASAN)
+  add_test(NAME masp_cli_unit COMMAND test_masp_cli)
+endif()
 
 # Windows (MinGW) needs POSIX regex library (libgnurx)
 if(MINGW)
