@@ -68,10 +68,12 @@ int main(void) {
         return 1;
     }
 
-    // Test files - only use self-contained files without external dependencies
-    // fast_pp1.vcl and general_nospec_tri_pp1.vcl require ps2gl includes
+    // Test files from ps2gl that caused crashes in parallel builds
+    // Include files are now copied to test/include/ with relative paths
     const char *test_files[] = {
-        "vu1Triangle.vcl"
+        "vu1Triangle.vcl",
+        "fast_pp1.vcl",
+        "general_nospec_tri_pp1.vcl"
     };
     int num_test_files = sizeof(test_files) / sizeof(test_files[0]);
 
