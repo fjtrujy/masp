@@ -54,7 +54,8 @@ int main(void) {
     char include_path[1024];
 
     snprintf(masp_path, sizeof(masp_path), "%s/src/masp", BUILD_DIR);
-    snprintf(include_path, sizeof(include_path), "%s/test/include", SRC_DIR);
+    // Point to test/ directory so masp can resolve "include/*.i" paths
+    snprintf(include_path, sizeof(include_path), "%s/test", SRC_DIR);
 
     // Check if masp exists
     struct stat st;
