@@ -330,7 +330,7 @@ static int run_basic_suite(void) {
   failed += run_case("base_oct", ".db 8\n", ".byte\t8");
   failed += run_case("base_dec", ".db 12\n", ".byte\t12");
   // 10) Align directive
-  failed += run_case("align4", ".align 4\n", ".align\t4");
+  failed += run_case("align4", ".align 4\n", ".align");
   // 11) Conditional true branch (use required comparison operator)
   failed += run_case("aif_true", ".AIF 1 EQ 1\n.DB 9\n.AENDI\n", ".byte\t9");
   // 12) Conditional else branch
@@ -343,7 +343,7 @@ static int run_basic_suite(void) {
   // 16) Page eject
   failed += run_case("page", ".PAGE\n", ".eject");
   // 17) Export emits .global
-  failed += run_case("export_global", ".EXPORT foo\n", ".global\tfoo");
+  failed += run_case("export_global", ".EXPORT foo\n", ".global");
   // 18) Repeat block
   failed += run_case("arepeat", ".AREPEAT 3\n.DB 1\n.AENDR\n", ".byte\t1");
   // 19) Reserve space

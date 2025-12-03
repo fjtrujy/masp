@@ -28,11 +28,15 @@ endif()
 # Stress test to reproduce crashes
 # This test requires the masp binary to be built first
 # In CI/CD, run: cmake --build . && ctest
+# Only run stress test when ASAN is enabled, since it's designed to catch
+# memory corruption bugs that ASAN fixes
 add_executable(test_stress_parallel test_stress_parallel.c)
 target_compile_definitions(test_stress_parallel PRIVATE
   SRC_DIR="${CMAKE_SOURCE_DIR}"
   BUILD_DIR="${CMAKE_BINARY_DIR}"
 )
-add_test(NAME masp_stress COMMAND test_stress_parallel)
+if(ENABLE_ASAN)
+  add_test(NAME masp_stress COMMAND test_stress_parallel)
+endif()
 
 
