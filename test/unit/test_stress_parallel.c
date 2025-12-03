@@ -17,11 +17,12 @@
 // Test masp stability under repeated execution
 // This reproduces the crash observed in ps2gl builds
 
-static int run_masp_once(const char *masp_path, const char *input, const char *output) {
+static int run_masp_once(const char *masp_path, const char *input, const char *output, const char *include_path) {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process
-        const char *argv[] = { masp_path, "-p", "-s", "-c", ";", "-o", output, "--", input, NULL };
+        // Add -I flag to include directory for .include directives
+        const char *argv[] = { masp_path, "-p", "-s", "-c", ";", "-I", include_path, "-o", output, "--", input, NULL };
         execv(masp_path, (char* const*)argv);
         _exit(127);
     } else if (pid > 0) {
@@ -50,8 +51,10 @@ static int run_masp_once(const char *masp_path, const char *input, const char *o
 int main(void) {
     char masp_path[1024];
     char output_path[1024];
+    char include_path[1024];
 
     snprintf(masp_path, sizeof(masp_path), "%s/src/masp", BUILD_DIR);
+    snprintf(include_path, sizeof(include_path), "%s/test/include", SRC_DIR);
 
     // Check if masp exists
     struct stat st;
@@ -99,7 +102,7 @@ int main(void) {
             snprintf(output_path, sizeof(output_path), "%s/test_outputs/stress_%s_%d.out",
                      BUILD_DIR, test_files[file_idx], i);
 
-            int rc = run_masp_once(masp_path, input_path, output_path);
+            int rc = run_masp_once(masp_path, input_path, output_path, include_path);
 
             if (rc != 0) {
                 if (rc >= 128) {
