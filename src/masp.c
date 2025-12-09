@@ -58,8 +58,6 @@ suitable for gas to consume.
 #include <stdio.h>
 #include <string.h>
 #include <getopt.h>
-#include <signal.h>
-#include <execinfo.h>
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
@@ -4346,49 +4344,12 @@ show_help (void)
   show_usage (stdout, 0);
 }
 
-/* Install a SIGABRT handler to capture a backtrace when aborting in non-ASAN builds. */
-static void crash_signal_handler(int sig)
-{
-  void *buffer[64];
-  int nptrs = backtrace(buffer, (int)(sizeof(buffer) / sizeof(buffer[0])));
-  char logpath[256];
-  snprintf(logpath, sizeof logpath, "/tmp/masp_abort_%d.log", getpid());
-  FILE *f = fopen(logpath, "w");
-  if (f) {
-    fprintf(f, "Signal %d received (PID %d)\n", sig, getpid());
-    char **symbols = backtrace_symbols(buffer, nptrs);
-    if (symbols) {
-      fprintf(f, "Backtrace (%d frames):\n", nptrs);
-      for (int i = 0; i < nptrs; ++i) {
-        fprintf(f, "  %s\n", symbols[i]);
-      }
-      free(symbols);
-    }
-    fclose(f);
-  }
-  /* Re-raise default to generate core/abort semantics */
-  signal(sig, SIG_DFL);
-  raise(sig);
-}
-
-static void install_crash_handlers(void)
-{
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = crash_signal_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESETHAND;
-  sigaction(SIGABRT, &sa, NULL);
-}
-
 int
 main (int argc, char *argv[])
 {
   int opt;
   char *out_name = 0;
   sp = include_stack;
-
-  install_crash_handlers();
 
   cml_prefix_char = prefix_char = '.'; // The default
   masp_syntax = 1; // The default
