@@ -80,6 +80,7 @@ extern const char *define_macro(int idx, sb *in, sb *label, int (*get_line)(sb *
 	   const char **namep);
 extern int check_macro(const char *, sb *, int, const char **, macro_entry **);
 extern void delete_macro(const char *);
+extern void macro_cleanup(void);
 extern const char *expand_irp(int, int, sb *, sb *, int (*)(sb *), int);
 
 #endif

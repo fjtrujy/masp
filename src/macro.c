@@ -440,7 +440,7 @@ get_any_string (idx, in, out, expand, pretend_quoted)
 			       idx + 1,
 			       in,
 			       &val);
-	  sprintf (buf, "%d", val);
+	  snprintf (buf, sizeof buf, "%d", val);
 	  sb_add_string (out, buf);
 	}
       else if (in->ptr[idx] == '"'
@@ -686,13 +686,20 @@ define_macro (idx, in, label, get_line, namep)
   /* And stick it in the macro hash table.  */
   for (idx = 0; idx < name.len; idx++)
     name.ptr[idx] = TOLOWER (name.ptr[idx]);
+  /* Get the null-terminated string from the sb.  hash_jam will copy it
+     to its obstack, so we can free the sb afterward.  */
   namestr = sb_terminate (&name);
   hash_jam (macro_hash, namestr, (void *) macro);
 
   macro_defined = 1;
 
+  /* Return the name if requested.  Note: this returns a pointer to the
+     sb's internal buffer which will become invalid after sb_kill.
+     The only caller in masp.c passes NULL, so this is safe.  */
   if (namep != NULL)
     *namep = namestr;
+
+  sb_kill (&name);
 
   return NULL;
 }
@@ -815,7 +822,7 @@ macro_expand_body (sb *in, sb *out, formal_entry *formals, struct hash_control *
 
 	      char buffer[10];
 	      src++;
-	      sprintf (buffer, "%d", macro_number);
+	      snprintf (buffer, sizeof buffer, "%d", macro_number);
 	      sb_add_string (out, buffer);
 	    }
 	  else if (in->ptr[src] == '&')
@@ -895,7 +902,7 @@ macro_expand_body (sb *in, sb *out, formal_entry *formals, struct hash_control *
 
 		  src = get_token (src, in, &f->name);
 		  ++loccnt;
-		  sprintf (buf, "LL%04x", loccnt);
+		  snprintf (buf, sizeof buf, "LL%04x", loccnt);
 		  sb_add_string (&f->actual, buf);
 
 		  err = hash_jam (formal_hash, sb_terminate (&f->name), f);
@@ -1147,7 +1154,7 @@ macro_expand (int idx, sb *in, macro_entry *m, sb *out, int comment_char)
       sb_add_string (&t, macro_strip_at ? "$NARG" : "NARG");
       ptr = (formal_entry *) hash_find (m->formal_hash, sb_terminate (&t));
       sb_reset (&ptr->actual);
-      sprintf (buffer, "%d", narg);
+      snprintf (buffer, sizeof buffer, "%d", narg);
       sb_add_string (&ptr->actual, buffer);
     }
 
@@ -1316,7 +1323,7 @@ macro_expand2 (int idx, sb *in, macro_entry *m, sb *out, int comment_char)
       sb_add_string (&t, macro_strip_at ? "$NARG" : "NARG");
       ptr = (formal_entry *) hash_find (m->formal_hash, sb_terminate (&t));
       sb_reset (&ptr->actual);
-      sprintf (buffer, "%d", narg);
+      snprintf (buffer, sizeof buffer, "%d", narg);
       sb_add_string (&ptr->actual, buffer);
     }
 
@@ -1504,4 +1511,50 @@ expand_irp (int irpc, int idx, sb *in, sb *out, int (*get_line)(sb *), int comme
   sb_kill (&sub);
 
   return NULL;
+}
+
+/* Helper function to free a single macro entry.  */
+
+static void
+free_macro_entry (const char *key, void *value)
+{
+  macro_entry *macro = (macro_entry *) value;
+  formal_entry *formal;
+  formal_entry *next;
+
+  (void) key;  /* Key is stored in hash table's obstack, freed by hash_die.  */
+
+  /* Free all formals in the linked list.  */
+  for (formal = macro->formals; formal != NULL; formal = next)
+    {
+      next = formal->next;
+      sb_kill (&formal->name);
+      sb_kill (&formal->def);
+      sb_kill (&formal->actual);
+      free (formal);
+    }
+
+  /* Free the formal hash table.  */
+  if (macro->formal_hash != NULL)
+    hash_die (macro->formal_hash);
+
+  /* Free the substitution text.  */
+  sb_kill (&macro->sub);
+
+  /* Free the macro entry itself.  */
+  free (macro);
+}
+
+/* Cleanup all macro data structures.  */
+
+void
+macro_cleanup (void)
+{
+  if (macro_hash != NULL)
+    {
+      hash_traverse (macro_hash, free_macro_entry);
+      hash_die (macro_hash);
+      macro_hash = NULL;
+    }
+  macro_defined = 0;
 }

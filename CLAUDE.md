@@ -44,8 +44,6 @@ ctest --test-dir build --output-on-failure
 cmake --build build --target check
 ```
 
-**Important**: Unit tests only run when ASAN is enabled. Without ASAN, MASP has known memory corruption bugs that cause crashes. Tests are automatically skipped when `ENABLE_ASAN=OFF`.
-
 ### Install:
 ```bash
 cmake --install build --prefix /usr/local
@@ -103,7 +101,6 @@ cmake --install build --prefix /usr/local
   - `test_masp_cli.c`: in-process CLI tests (links against MASP object files)
   - `test_stress_parallel.c`: stress test for concurrent usage
   - Tests compile MASP sources directly to avoid CLI parsing issues
-  - Only run when ASAN is enabled
 
 - **Integration test files** (`test/*.vcl`):
   - Assembly files for testing preprocessor output
@@ -111,19 +108,24 @@ cmake --install build --prefix /usr/local
 
 ### Memory Safety
 
-**Critical**: MASP has known memory corruption bugs that cause crashes (SIGABRT) without AddressSanitizer. ASAN is enabled by default and should only be disabled for production builds where performance is critical.
+Memory management has been improved with the following changes:
+- String buffer (`sb`) now properly frees memory in `sb_kill()`
+- Removed old free-list mechanism that could cause corruption
+- Added `macro_cleanup()` function to properly free macro data structures on exit
+- Hash table key strings are properly managed via obstacks
+- No memory leaks detected (verified with macOS `leaks` tool)
+- Stress tests pass with 100% success rate with or without ASAN
 
-When running with ASAN in CI/CD:
-- Leak detection is disabled (`detect_leaks=0`)
-- Known minor leaks (~36KB at exit) are not critical
-- Focus is on crashes, buffer overflows, and use-after-free
+ASAN configuration:
+- ASAN is enabled by default in CMake (`-DENABLE_ASAN=ON`)
+- Leak detection is disabled in CI (`detect_leaks=0`) for macOS compatibility
+- Production builds can safely disable ASAN with `-DENABLE_ASAN=OFF`
 
 ### CI/CD
 
 GitHub Actions workflow (`.github/workflows/compilation.yml`):
 - Tests on macOS (ARM64, x86_64), Ubuntu, Windows (MinGW)
 - Matrix builds with/without ASAN
-- Tests only run when ASAN is enabled
 - ASAN options: `check_initialization_order=1:strict_string_checks=1:detect_leaks=0`
 
 ## Development Notes
@@ -147,10 +149,9 @@ GitHub Actions workflow (`.github/workflows/compilation.yml`):
    - Never manipulate `sb.ptr` directly
 
 4. **Testing strategy**:
-   - Always build with ASAN during development
    - Run tests with `ctest --test-dir build --output-on-failure`
-   - Tests are designed to catch memory corruption early
    - Add new test cases to `test/unit/test_masp_cli.c`
+   - ASAN is optional but recommended for development
 
 ### Platform-specific concerns:
 

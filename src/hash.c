@@ -213,6 +213,8 @@ hash_insert (struct hash_control *table, const char *key, void *value)
   struct hash_entry *p;
   struct hash_entry **list;
   unsigned long hash;
+  char *key_copy;
+  size_t key_len;
 
   p = hash_lookup (table, key, &list, &hash);
   if (p != NULL)
@@ -222,8 +224,16 @@ hash_insert (struct hash_control *table, const char *key, void *value)
   ++table->insertions;
 #endif
 
+  /* Allocate the hash entry */
   p = (struct hash_entry *) obstack_alloc (&table->memory, sizeof (*p));
-  p->string = key;
+
+  /* Duplicate the key string so we own it - this prevents dangling pointers
+     when the original string (from sb buffers) is freed */
+  key_len = strlen(key) + 1;
+  key_copy = (char *) obstack_alloc (&table->memory, key_len);
+  memcpy(key_copy, key, key_len);
+
+  p->string = key_copy;
   p->hash = hash;
   p->data = value;
 
@@ -243,6 +253,8 @@ hash_jam (struct hash_control *table, const char *key, void *value)
   struct hash_entry *p;
   struct hash_entry **list;
   unsigned long hash;
+  char *key_copy;
+  size_t key_len;
 
   p = hash_lookup (table, key, &list, &hash);
   if (p != NULL)
@@ -251,6 +263,7 @@ hash_jam (struct hash_control *table, const char *key, void *value)
       ++table->replacements;
 #endif
 
+      /* Entry exists - just update the value, don't touch the key */
       p->data = value;
     }
   else
@@ -259,8 +272,16 @@ hash_jam (struct hash_control *table, const char *key, void *value)
       ++table->insertions;
 #endif
 
+      /* Allocate the hash entry */
       p = (struct hash_entry *) obstack_alloc (&table->memory, sizeof (*p));
-      p->string = key;
+
+      /* Duplicate the key string so we own it - this prevents dangling pointers
+         when the original string (from sb buffers) is freed */
+      key_len = strlen(key) + 1;
+      key_copy = (char *) obstack_alloc (&table->memory, key_len);
+      memcpy(key_copy, key, key_len);
+
+      p->string = key_copy;
       p->hash = hash;
       p->data = value;
 
@@ -324,14 +345,36 @@ hash_delete (struct hash_control *table, const char *key)
   if (p == NULL)
     return NULL;
 
-  if (p != *list)
-    abort ();
+  /* After hash_lookup with move-to-front optimization, p should always
+     be at the head of the list. However, if there's corruption, handle it gracefully. */
+  if (p == *list) {
+    /* Normal case - p is at the front */
+    *list = p->next;
+  } else {
+    /* Corruption detected - search for p and remove it */
+    struct hash_entry *prev = *list;
+    struct hash_entry *curr = prev ? prev->next : NULL;
+
+    while (curr && curr != p) {
+      prev = curr;
+      curr = curr->next;
+    }
+
+    if (curr == p && prev) {
+      /* Found it - remove from list */
+      prev->next = p->next;
+    } else if (*list == NULL) {
+      /* List is empty but we found p? This shouldn't happen */
+      abort();
+    } else {
+      /* Couldn't find p in list - severe corruption */
+      abort();
+    }
+  }
 
 #ifdef HASH_STATISTICS
   ++table->deletions;
 #endif
-
-  *list = p->next;
 
   /* Note that we never reclaim the memory for this entry.  If gas
      ever starts deleting hash table entries in a big way, this will

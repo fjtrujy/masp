@@ -58,6 +58,8 @@ suitable for gas to consume.
 #include <stdio.h>
 #include <string.h>
 #include <getopt.h>
+#include <signal.h>
+#include <execinfo.h>
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
@@ -472,6 +474,9 @@ quit (void)
 	}
     }
 
+  /* Clean up macro data structures.  */
+  macro_cleanup ();
+
   exit (exitcode);
 }
 
@@ -624,59 +629,56 @@ checkconst (int op, exp_t *term)
 static int
 chew_flonum (int idx, const sb *string, sb *out)
 {
-  sb buf;
-  regex_t reg;
-  regmatch_t match;
-
-  /* Duplicate and null terminate `string'.  */
-  sb_new (&buf);
-  sb_add_sb (&buf, string);
-  sb_add_char (&buf, '\0');
-
-  if (regcomp (&reg, "([0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?)", REG_EXTENDED) != 0)
+  /* Manually parse a floating-point literal:
+     [0-9]* '.' [0-9]+ ( [eE] [+-]? [0-9]+ )?
+   */
+  int i = idx;
+  const int n = string->len;
+  /* integer part (optional) */
+  while (i < n && ISDIGIT (string->ptr[i]))
+    i++;
+  /* decimal point required */
+  if (i >= n || string->ptr[i] != '.')
+    return idx;
+  i++;
+  /* at least one digit after '.' */
+  if (i >= n || ! ISDIGIT (string->ptr[i]))
+    return idx;
+  while (i < n && ISDIGIT (string->ptr[i]))
+    i++;
+  /* optional exponent */
+  if (i < n && (string->ptr[i] == 'e' || string->ptr[i] == 'E'))
     {
-      sb_kill (&buf);
-      return idx;
+      int j = i + 1;
+      if (j < n && (string->ptr[j] == '+' || string->ptr[j] == '-'))
+	j++;
+      if (j < n && ISDIGIT (string->ptr[j]))
+	{
+	  i = j + 1;
+	  while (i < n && ISDIGIT (string->ptr[i]))
+	    i++;
+	}
+      /* If no digits after 'e' part, ignore the exponent */
     }
-  if (regexec (&reg, &buf.ptr[idx], 1, &match, 0) != 0)
-    {
-      sb_kill (&buf);
-      regfree (&reg);
-      return idx;
-    }
-
-  /* Copy the match to the output.  */
-  assert (match.rm_eo >= match.rm_so);
-  sb_add_buffer (out, &buf.ptr[idx], match.rm_eo - match.rm_so);
-
-  sb_kill (&buf);
-  regfree (&reg);
-  idx += match.rm_eo;
-  return idx;
+  sb_add_buffer (out, &string->ptr[idx], i - idx);
+  return i;
 }
 
 static int
 is_flonum (int idx, const sb *string)
 {
-  sb buf;
-  regex_t reg;
-  int rc;
-
-  /* Duplicate and null terminate `string'.  */
-  sb_new (&buf);
-  sb_add_sb (&buf, string);
-  sb_add_char (&buf, '\0');
-
-  if (regcomp (&reg, "^[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?", REG_EXTENDED) != 0)
-    {
-      sb_kill (&buf);
-      return 0;
-    }
-
-  rc = regexec (&reg, &buf.ptr[idx], 0, NULL, 0);
-  sb_kill (&buf);
-  regfree (&reg);
-  return (rc == 0);
+  int i = idx;
+  const int n = string->len;
+  while (i < n && ISDIGIT (string->ptr[i]))
+    i++;
+  if (i >= n || string->ptr[i] != '.')
+    return 0;
+  i++;
+  if (i >= n || ! ISDIGIT (string->ptr[i]))
+    return 0;
+  /* At least one digit after '.' ensures it's a flonum. We don't need
+     to fully consume; just confirm the shape is valid. */
+  return 1;
 }
 
 /* Turn the number in string at idx into a number of base, fill in
@@ -1012,7 +1014,7 @@ exp_string (exp_t *exp, sb *string)
       char buf[20];
       if (np)
 	sb_add_char (string, '+');
-      sprintf (buf, "%d", exp->value);
+      snprintf (buf, sizeof buf, "%d", exp->value);
       sb_add_string (string, buf);
       np = 1;
       ad = 1;
@@ -1305,7 +1307,7 @@ change_base (int idx, sb *in, sb *out)
 	    }
 
 	  idx = sb_strtol (idx + 2, in, base, &value);
-	  sprintf (buffer, "%d", value);
+	  snprintf (buffer, sizeof buffer, "%d", value);
 	  sb_add_string (out, buffer);
 	}
       else if (ISFIRSTCHAR (in->ptr[idx]))
@@ -1329,7 +1331,7 @@ change_base (int idx, sb *in, sb *out)
 	  /* All numbers must start with a digit, let's chew it and
 	     spit out decimal.  */
 	  idx = sb_strtol (idx, in, radix, &value);
-	  sprintf (buffer, "%d", value);
+	  snprintf (buffer, sizeof buffer, "%d", value);
 	  sb_add_string (out, buffer);
 
 	  /* Skip all undigsested letters.  */
@@ -1453,7 +1455,7 @@ change_base2 (int idx, sb *in, sb *out)
 		     in->ptr[ idx ] != comment_char ) )
 		{ // This really is a number, we think
 		  idx = sb_strtol (idx, in, base, &value);
-		  sprintf (buffer, "%d", value);
+		  snprintf (buffer, sizeof buffer, "%d", value);
 		  sb_add_string (out, buffer);
 		}
 	      else // We write out the radix code, it may be something
@@ -1484,7 +1486,7 @@ change_base2 (int idx, sb *in, sb *out)
 	  /* All numbers must start with a digit, let's chew it and
 	     spit out decimal.  */
 	  idx = sb_strtol (idx, in, radix, &value);
-	  sprintf (buffer, "%d", value);
+	  snprintf (buffer, sizeof buffer, "%d", value);
 	  sb_add_string (out, buffer);
 
 	  /* Skip all undigsested letters.  */
@@ -2067,7 +2069,7 @@ get_any_string (int idx, sb *in, sb *out, int expand, int pretend_quoted)
 			     idx + 1,
 			     in,
 			     &val);
-	  sprintf (buf, "%d", val);
+	  snprintf (buf, sizeof buf, "%d", val);
 	  sb_add_string (out, buf);
 	}
       else if (in->ptr[idx] == '"'
@@ -2154,7 +2156,7 @@ dolen (int idx, sb *in, sb *out)
   idx = skip_openp (idx, in);
   idx = get_and_process (idx, in, &stringout);
   idx = skip_closep (idx, in);
-  sprintf (buffer, "%d", stringout.len);
+  snprintf (buffer, sizeof buffer, "%d", stringout.len);
   sb_add_string (out, buffer);
 
   sb_kill (&stringout);
@@ -2198,7 +2200,7 @@ doinstr (int idx, sb *in, sb *out)
 	  break;
 	}
     }
-  sprintf (buffer, "%d", res);
+  snprintf (buffer, sizeof buffer, "%d", res);
   sb_add_string (out, buffer);
   sb_kill (&string);
   sb_kill (&search);
@@ -2664,7 +2666,7 @@ condass_lookup_name (sb *inbuf, int idx, sb *out, int warn)
       if (ptr->type == hash_integer)
 	{
 	  char buffer[30];
-	  sprintf (buffer, "%d", ptr->value.i);
+	  snprintf (buffer, sizeof buffer, "%d", ptr->value.i);
 	  sb_add_string (out, buffer);
 	}
       else
@@ -3096,9 +3098,9 @@ do_arepeat (int idx, sb *in)
       if (rc > 1)
 	{
 	  if (!mri)
-	    sprintf (buffer, "\t.AREPEAT	%d\n", rc - 1);
+	    snprintf (buffer, sizeof buffer, "\t.AREPEAT\t%d\n", rc - 1);
 	  else
-	    sprintf (buffer, "\tREPT	%d\n", rc - 1);
+	    snprintf (buffer, sizeof buffer, "\tREPT\t%d\n", rc - 1);
 	  sb_add_string (&copy, buffer);
 	  sb_add_sb (&copy, &sub);
 	  if (!mri)
@@ -4344,12 +4346,49 @@ show_help (void)
   show_usage (stdout, 0);
 }
 
+/* Install a SIGABRT handler to capture a backtrace when aborting in non-ASAN builds. */
+static void crash_signal_handler(int sig)
+{
+  void *buffer[64];
+  int nptrs = backtrace(buffer, (int)(sizeof(buffer) / sizeof(buffer[0])));
+  char logpath[256];
+  snprintf(logpath, sizeof logpath, "/tmp/masp_abort_%d.log", getpid());
+  FILE *f = fopen(logpath, "w");
+  if (f) {
+    fprintf(f, "Signal %d received (PID %d)\n", sig, getpid());
+    char **symbols = backtrace_symbols(buffer, nptrs);
+    if (symbols) {
+      fprintf(f, "Backtrace (%d frames):\n", nptrs);
+      for (int i = 0; i < nptrs; ++i) {
+        fprintf(f, "  %s\n", symbols[i]);
+      }
+      free(symbols);
+    }
+    fclose(f);
+  }
+  /* Re-raise default to generate core/abort semantics */
+  signal(sig, SIG_DFL);
+  raise(sig);
+}
+
+static void install_crash_handlers(void)
+{
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = crash_signal_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESETHAND;
+  sigaction(SIGABRT, &sa, NULL);
+}
+
 int
 main (int argc, char *argv[])
 {
   int opt;
   char *out_name = 0;
   sp = include_stack;
+
+  install_crash_handlers();
 
   cml_prefix_char = prefix_char = '.'; // The default
   masp_syntax = 1; // The default

@@ -62,35 +62,27 @@ static void sb_check(sb *ptr, int len);
 
 int string_count[sb_max_power_two];
 
-/* Free list of sb structures.  */
-
-static sb_list_vector free_list;
-
 /* initializes an sb.  */
 
 void
 sb_build (sb *ptr, int size)
 {
-  /* see if we can find one to allocate */
   sb_element *e;
 
   if (size > sb_max_power_two)
-    abort ();
+    abort();
+  if (size < 0)
+    abort();
 
-  e = free_list.size[size];
+  /* Always allocate fresh - simpler and more reliable */
+  /* Use calloc to zero-initialize and catch uninitialized memory bugs */
+  size_t total_size = sizeof (sb_element) + (1 << size);
+  e = (sb_element *) calloc (1, total_size);
   if (!e)
-    {
-      /* nothing there, allocate one and stick into the free list */
-      e = (sb_element *) xmalloc (sizeof (sb_element) + (1 << size));
-      e->next = free_list.size[size];
-      e->size = 1 << size;
-      free_list.size[size] = e;
-      string_count[size]++;
-    }
-
-  /* remove from free list */
-
-  free_list.size[size] = e->next;
+    abort();
+  e->next = NULL;
+  e->size = 1 << size;
+  string_count[size]++;
 
   /* copy into callers world */
   ptr->ptr = e->data;
@@ -111,9 +103,19 @@ sb_new (ptr)
 void
 sb_kill (sb *ptr)
 {
-  /* return item to free list */
-  ptr->item->next = free_list.size[ptr->pot];
-  free_list.size[ptr->pot] = ptr->item;
+  /* Validate parameters */
+  if (ptr->pot < 0 || ptr->pot >= sb_max_power_two)
+    abort();
+  if (ptr->item == NULL)
+    abort();
+
+  /* Free the memory */
+  free(ptr->item);
+
+  /* Clear the sb to catch use-after-free */
+  ptr->ptr = NULL;
+  ptr->len = 0;
+  ptr->item = NULL;
 }
 
 /* add the sb at s to the end of the sb at ptr */
@@ -132,15 +134,36 @@ sb_add_sb (sb *ptr, const sb *s)
 static void
 sb_check (sb *ptr, int len)
 {
-  if (ptr->len + len >= 1 << ptr->pot)
+  /* Validate input */
+  if (len < 0)
+    abort();
+  if (ptr->pot < 0 || ptr->pot >= sb_max_power_two)
+    abort();
+  if (ptr->len < 0)
+    abort();
+
+  if (ptr->len + len > 1 << ptr->pot)
     {
       sb tmp;
       int pot = ptr->pot;
-      while (ptr->len + len >= 1 << pot)
-	pot++;
+
+      while (ptr->len + len > 1 << pot)
+	{
+	  pot++;
+	  if (pot >= sb_max_power_two)
+	    abort();
+	}
+
       sb_build (&tmp, pot);
       sb_add_sb (&tmp, ptr);
+
+      /* Kill the old buffer before reassigning */
       sb_kill (ptr);
+
+      /* Verify tmp is valid before copying */
+      if (tmp.pot != pot || tmp.item == NULL)
+        abort();
+
       *ptr = tmp;
     }
 }
@@ -159,6 +182,9 @@ void
 sb_add_char (sb *ptr, int c)
 {
   sb_check (ptr, 1);
+  /* Defensive check: ensure we're not writing past the buffer */
+  if (ptr->len >= (1 << ptr->pot))
+    abort();
   ptr->ptr[ptr->len++] = c;
 }
 
@@ -169,6 +195,9 @@ sb_add_string (sb *ptr, const char *s)
 {
   int len = strlen (s);
   sb_check (ptr, len);
+  /* Defensive check */
+  if (ptr->len + len > (1 << ptr->pot))
+    abort();
   memcpy (ptr->ptr + ptr->len, s, len);
   ptr->len += len;
 }
@@ -179,6 +208,9 @@ void
 sb_add_buffer (sb *ptr, const char *s, int len)
 {
   sb_check (ptr, len);
+  /* Defensive check */
+  if (ptr->len + len > (1 << ptr->pot))
+    abort();
   memcpy (ptr->ptr + ptr->len, s, len);
   ptr->len += len;
 }
@@ -272,14 +304,12 @@ sb_skip_comma (int idx, const sb *ptr)
 
 int sb_eat_literal( int idx, sb *out, const sb *in )
 {
-  //printf( "sb_eat_literal\n" );
   if ( idx < in->len && ( in->ptr[ idx ] == '"' || in->ptr[ idx ] == '\'' ) )
     {
       char str_type = in->ptr[ idx ];
       sb_add_char( out, in->ptr[ idx++ ] );
       while ( idx < in->len )
 	{
-	  //	  sb_add_char( out, in->ptr[ idx ]);
 	  if ( in->ptr[ idx ] == '\\' && idx < in->len - 1 )
 	    {
 	      sb_add_char( out, in->ptr[ ++idx ]);
