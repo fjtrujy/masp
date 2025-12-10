@@ -5,10 +5,9 @@ project(masp C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Enable AddressSanitizer by default to fix intermittent crashes
-# ASAN prevents memory corruption issues that cause SIGABRT crashes
-# Can be disabled with -DENABLE_ASAN=OFF if needed
-option(ENABLE_ASAN "Enable AddressSanitizer for memory safety" ON)
+# AddressSanitizer support (disabled by default)
+# Enable with -DENABLE_ASAN=ON when needed
+option(ENABLE_ASAN "Enable AddressSanitizer for memory safety" OFF)
 if(ENABLE_ASAN)
   add_compile_options(-fsanitize=address)
   add_link_options(-fsanitize=address)

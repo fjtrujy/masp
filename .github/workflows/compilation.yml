@@ -61,11 +61,11 @@ jobs:
         export PS2DEV=$PWD/ps2dev
         export PATH="$PS2DEV/bin:$PATH"
         if [ "${{ matrix.sanitizer }}" = "asan" ]; then
-          # ASAN is enabled by default in CMakeLists.txt, just add UBSan
+          # Enable ASAN and also add UBSan
           export SAN="-fsanitize=undefined"
-          export EXTRA_CMAKE_FLAGS="-DCMAKE_C_FLAGS='$SAN' -DCMAKE_EXE_LINKER_FLAGS='$SAN'"
+          export EXTRA_CMAKE_FLAGS="-DENABLE_ASAN=ON -DCMAKE_C_FLAGS='$SAN' -DCMAKE_EXE_LINKER_FLAGS='$SAN'"
         else
-          # Explicitly disable ASAN for non-sanitizer builds to test without it
+          # Build without sanitizers
           export EXTRA_CMAKE_FLAGS="-DENABLE_ASAN=OFF"
         fi
         cmake -B build-cmake -DCMAKE_BUILD_TYPE=${{ matrix.debug }} -DCMAKE_INSTALL_PREFIX=$PS2DEV ${EXTRA_CMAKE_FLAGS}
