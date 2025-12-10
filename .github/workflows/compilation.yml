@@ -86,3 +86,29 @@ jobs:
       with:
         name: masp-${{ matrix.debug }}-${{ matrix.os[0] }}-${{ matrix.os[1] }}-${{ matrix.sanitizer }}
         path: build-cmake/src/masp
+
+  build-alpine:
+    runs-on: ubuntu-latest
+    container: alpine:latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Alpine packages
+      run: |
+        apk add --no-cache build-base cmake git
+
+    - name: Compile MASP (Alpine, no sanitizers)
+      run: |
+        cmake -B build-cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_ASAN=OFF
+        cmake --build build-cmake --config RelWithDebInfo
+
+    - name: Run unit tests (ctest)
+      run: |
+        ctest --test-dir build-cmake -C RelWithDebInfo --output-on-failure
+
+    - name: Upload artifacts
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: masp-RelWithDebInfo-alpine-x86_64-none
+        path: build-cmake/src/masp
