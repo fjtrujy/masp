@@ -789,7 +789,11 @@ macro_expand_body (sb *in, sb *out, formal_entry *formals, struct hash_control *
 	    }
 	  else
 	    {
-	      /* FIXME: Why do we do this?  */
+	      /* NOTE: Inherited from GNU gasp.  Outside MRI mode we treat a
+		 bare '&' as a formal-arg-substitution prefix (gasp-compat
+		 behaviour); the '&' character itself does not survive into
+		 the output.  Keep until ps2gl shaders show a need to change
+		 it.  */
 	      src = sub_actual (src + 1, in, &t, formal_hash, '&', out, 0);
 	    }
 	}
@@ -952,14 +956,12 @@ macro_expand_body (sb *in, sb *out, formal_entry *formals, struct hash_control *
 	  ptr = (formal_entry *) hash_find (formal_hash, sb_terminate (&t));
 	  if (ptr == NULL)
 	    {
-	      /* FIXME: We should really return a warning string here,
-                 but we can't, because the == might be in the MRI
-                 comment field, and, since the nature of the MRI
-                 comment field depends upon the exact instruction
-                 being used, we don't have enough information here to
-                 figure out whether it is or not.  Instead, we leave
-                 the == in place, which should cause a syntax error if
-                 it is not in a comment.  */
+	      /* NOTE: We would like to warn that the operand of '==' is
+		 not a known formal, but the '==' might legitimately live
+		 inside the MRI comment field, whose extent depends on the
+		 instruction being assembled - information we don't have
+		 here.  Leave '==' in place; the downstream assembler will
+		 emit a syntax error if it is not actually in a comment.  */
 	      sb_add_char (out, '=');
 	      sb_add_char (out, '=');
 	      sb_add_sb (out, &t);
