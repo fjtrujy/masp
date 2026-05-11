@@ -21,6 +21,23 @@ target_compile_definitions(test_masp_cli PRIVATE
 # CLI unit test
 add_test(NAME masp_cli_unit COMMAND test_masp_cli)
 
+# Per-module unit tests — link only the module under test, no masp.c
+# pull-in.  Keeps the build closed-form and the tests fast.
+add_executable(test_sb
+  ${CMAKE_SOURCE_DIR}/test/unit/test_sb.c
+  ${CMAKE_SOURCE_DIR}/src/sb.c
+)
+target_include_directories(test_sb PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+add_test(NAME masp_sb_unit COMMAND test_sb)
+
+add_executable(test_hash
+  ${CMAKE_SOURCE_DIR}/test/unit/test_hash.c
+  ${CMAKE_SOURCE_DIR}/src/hash.c
+  ${CMAKE_SOURCE_DIR}/src/compat.c
+)
+target_include_directories(test_hash PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+add_test(NAME masp_hash_unit COMMAND test_hash)
+
 # Windows (MinGW) needs POSIX regex library (libgnurx)
 if(MINGW)
   target_link_libraries(test_masp_cli PRIVATE gnurx)
