@@ -1,0 +1,37 @@
+# CMake build directories.  Several sanitizer / fortify variants live
+# side-by-side at the repo root.
+build/
+build-*/
+build_*/
+
+# In-source CMake leftovers (in case anyone configures in-tree).
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+Testing/
+
+# Compiled objects / static libs / shared libs.
+*.o
+*.a
+*.so
+*.dylib
+
+# autotools/m4 leftovers (legacy Makefile path).
+autom4te.cache/
+config.log
+config.status
+.deps/
+.libs/
+
+# Editor / IDE / OS junk.
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local masp binary built at top-level.
+/masp
