@@ -38,6 +38,29 @@ add_executable(test_hash
 target_include_directories(test_hash PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
 add_test(NAME masp_hash_unit COMMAND test_hash)
 
+# Number-prefix parser tests.  Reaches into masp.c statics via direct
+# #include (same trick as test_masp_cli); the support modules are
+# linked here so the binary is closed-form.
+add_executable(test_number_prefix
+  ${CMAKE_SOURCE_DIR}/test/unit/test_number_prefix.c
+  ${CMAKE_SOURCE_DIR}/src/hash.c
+  ${CMAKE_SOURCE_DIR}/src/macro.c
+  ${CMAKE_SOURCE_DIR}/src/sb.c
+  ${CMAKE_SOURCE_DIR}/src/compat.c
+)
+target_include_directories(test_number_prefix PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+target_compile_definitions(test_number_prefix PRIVATE
+  SRC_DIR="${CMAKE_SOURCE_DIR}"
+  BUILD_DIR="${CMAKE_BINARY_DIR}"
+  PACKAGE_VERSION="test"
+  REPORT_BUGS_TO="ci"
+  LOCALEDIR=""
+)
+if(MINGW)
+  target_link_libraries(test_number_prefix PRIVATE gnurx)
+endif()
+add_test(NAME masp_number_prefix_unit COMMAND test_number_prefix)
+
 # Windows (MinGW) needs POSIX regex library (libgnurx)
 if(MINGW)
   target_link_libraries(test_masp_cli PRIVATE gnurx)
