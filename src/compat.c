@@ -41,12 +41,18 @@ void xmalloc_set_program_name(const char *name) {
 
 /* Minimal obstack runtime to satisfy obstack.h macros */
 
-static struct _obstack_chunk *alloc_chunk(long size)
+static struct _obstack_chunk *init_chunk(struct _obstack_chunk *c, long total_size)
 {
-  struct _obstack_chunk *c = (struct _obstack_chunk *)xmalloc(sizeof(struct _obstack_chunk) + size);
-  c->limit = (char *)c + sizeof(struct _obstack_chunk) + size;
+  c->limit = (char *)c + total_size;
   c->prev = NULL;
   return c;
+}
+
+static struct _obstack_chunk *alloc_chunk(long size)
+{
+  long total_size = (long)sizeof(struct _obstack_chunk) + size;
+  return init_chunk((struct _obstack_chunk *)xmalloc((size_t)total_size),
+                    total_size);
 }
 
 int _obstack_begin(struct obstack *h, int size, int alignment,
@@ -61,7 +67,11 @@ int _obstack_begin(struct obstack *h, int size, int alignment,
   /* Allocate first chunk */
   struct _obstack_chunk *c;
   if (chunk_alloc)
-    c = (struct _obstack_chunk *)(*chunk_alloc)((long)(size + sizeof(struct _obstack_chunk)));
+    {
+      long total_size = (long)sizeof(struct _obstack_chunk) + size;
+      c = init_chunk((struct _obstack_chunk *)(*chunk_alloc)(total_size),
+                     total_size);
+    }
   else
     c = alloc_chunk(size);
   c->prev = NULL;
@@ -79,12 +89,29 @@ int _obstack_begin_1(struct obstack *h, int size, int alignment,
                      void *(*chunk_alloc)(void *, long),
                      void (*chunk_free)(void *, void *), void *arg)
 {
-  int ok = _obstack_begin(h, size, alignment, NULL, NULL);
+  if (size <= 0) size = 4096;
+  h->chunk_size = size;
+  h->alignment_mask = alignment ? alignment - 1 : 0;
+  h->maybe_empty_object = 0;
+  h->alloc_failed = 0;
   h->use_extra_arg = 1;
+
+  struct _obstack_chunk *c;
+  if (chunk_alloc)
+    {
+      long total_size = (long)sizeof(struct _obstack_chunk) + size;
+      c = init_chunk((struct _obstack_chunk *)(*chunk_alloc)(arg, total_size),
+                     total_size);
+    }
+  else
+    c = alloc_chunk(size);
+  h->chunk = c;
+  h->object_base = h->next_free = c->contents;
+  h->chunk_limit = c->limit;
   h->chunkfun = (struct _obstack_chunk *(*)(void *, long))chunk_alloc;
   h->freefun = (void (*)(void *, struct _obstack_chunk *))chunk_free;
   h->extra_arg = arg;
-  return ok;
+  return 1;
 }
 
 void _obstack_newchunk(struct obstack *h, int length)
@@ -95,13 +122,18 @@ void _obstack_newchunk(struct obstack *h, int length)
     needed = length + objlen;
   struct _obstack_chunk *newc;
   if (h->use_extra_arg && h->chunkfun)
-    newc = (*h->chunkfun)(h->extra_arg, needed + sizeof(struct _obstack_chunk));
+    {
+      long total_size = needed + (long)sizeof(struct _obstack_chunk);
+      newc = init_chunk((*h->chunkfun)(h->extra_arg, total_size),
+                        total_size);
+    }
   else if (h->chunkfun)
     {
       /* When extra arg is not in use, the allocator has the signature void*(long). */
       struct _obstack_chunk *(*alloc_one_arg)(long)
         = (struct _obstack_chunk *(*)(long))(void *)h->chunkfun;
-      newc = alloc_one_arg(needed + sizeof(struct _obstack_chunk));
+      long total_size = needed + (long)sizeof(struct _obstack_chunk);
+      newc = init_chunk(alloc_one_arg(total_size), total_size);
     }
   else
     newc = alloc_chunk(needed);
@@ -155,5 +187,3 @@ void obstack_free(struct obstack *h, void *obj)
 {
   _obstack_free(h, obj);
 }
-
-
